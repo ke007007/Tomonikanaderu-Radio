@@ -18,7 +18,7 @@ export type Article = {
   created_at: string;
   updated_at: string;
   published_at: string | null;
-  // サーバーが展開して返す場合に備えて
+  // サーバー側で展開されていれば使う
   guests?: Person[];
   navigators?: Person[];
   tags?: Tag[];
@@ -45,7 +45,7 @@ const normalizeArticle = (r: any): Article => {
   const library = r?.library_items ?? r?.library_json;
   const audio = r?.audio_links ?? r?.audio_json;
 
-  const article: Article = {
+  return {
     id: Number(r?.id),
     title: safeString(r?.title),
     slug: safeString(r?.slug),
@@ -62,18 +62,14 @@ const normalizeArticle = (r: any): Article => {
     navigators: safeArray<Person>(r?.navigators ?? [], []),
     tags: safeArray<Tag>(r?.tags ?? [], []),
   };
-  return article;
 };
 
-// 相対パスで同一オリジンの /api/* を叩く
+// 同一オリジンの /api/* を叩く
 const base = "";
 
 async function getJson<T>(url: string, fallback: T): Promise<T> {
   const res = await fetch(url, { headers: { accept: "application/json" } });
-  if (!res.ok) {
-    // 404などは空配列等で復帰
-    return fallback;
-  }
+  if (!res.ok) return fallback;
   try {
     const data = await res.json();
     return (data as T) ?? fallback;
@@ -82,54 +78,116 @@ async function getJson<T>(url: string, fallback: T): Promise<T> {
   }
 }
 
-export const api = {
-  // 記事一覧（安全な型に正規化）
-  async getArticles(): Promise<Article[]> {
-    const data = await getJson<any[]>(`${base}/api/articles`, []);
-    return safeArray<any>(data, []).map(normalizeArticle);
-  },
+async function postJson<T>(url: string, body: any, fallback: T): Promise<T> {
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(body ?? {}),
+  });
+  if (!res.ok) return fallback;
+  try {
+    const data = await res.json();
+    return (data as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
-  // ライブラリー（フラット化されたアイテム一覧）
-  // サーバーの /api/library-items を優先。無ければ記事からフラット化して返す。
-  async getFlattenedLibraryItems(): Promise<any[]> {
-    const items = await getJson<any[]>(`${base}/api/library-items`, []);
-    if (Array.isArray(items) && items.length > 0) return items;
+/* ========== API 実装（単体関数として定義） ========== */
 
-    // フォールバック: 記事からフラット化
-    const articles = await this.getArticles();
-    const flattened: any[] = [];
-    for (const a of articles) {
-      (a.library_items || []).forEach((it, idx) => {
-        flattened.push({
-          id: `${a.id}-${idx}`,
-          type: it?.type ?? "",
-          title: it?.title ?? "",
-          url: it?.url ?? "",
-          articleId: a.id,
-          articleSlug: a.slug,
-          articleTitle: a.title,
-          item_index: idx,
-        });
+async function getArticles(): Promise<Article[]> {
+  const data = await getJson<any[]>(`${base}/api/articles`, []);
+  return safeArray<any>(data, []).map(normalizeArticle);
+}
+
+async function getFlattenedLibraryItems(): Promise<any[]> {
+  const items = await getJson<any[]>(`${base}/api/library-items`, []);
+  if (Array.isArray(items) && items.length > 0) return items;
+
+  // フォールバック: 記事からフラット化
+  const articles = await getArticles();
+  const flattened: any[] = [];
+  for (const a of articles) {
+    (a.library_items || []).forEach((it, idx) => {
+      flattened.push({
+        id: `${a.id}-${idx}`,
+        type: it?.type ?? "",
+        title: it?.title ?? "",
+        url: it?.url ?? "",
+        articleId: a.id,
+        articleSlug: a.slug,
+        articleTitle: a.title,
+        item_index: idx,
       });
-    }
-    return flattened;
-  },
+    });
+  }
+  return flattened;
+}
 
-  // タクソノミー（管理画面用）。存在しない/失敗時は空配列で復帰
-  async getGuests(): Promise<Person[]> {
-    const data = await getJson<any[]>(`${base}/api/guests`, []);
-    return safeArray<any>(data, []).map((g) => ({ id: Number(g?.id), name: safeString(g?.name) }));
-  },
-  async getNavigators(): Promise<Person[]> {
-    const data = await getJson<any[]>(`${base}/api/navigators`, []);
-    return safeArray<any>(data, []).map((n) => ({ id: Number(n?.id), name: safeString(n?.name) }));
-  },
-  async getTags(): Promise<Tag[]> {
-    const data = await getJson<any[]>(`${base}/api/tags`, []);
-    return safeArray<any>(data, []).map((t) => ({
-      id: Number(t?.id),
-      name: safeString(t?.name),
-      slug: t?.slug ? String(t.slug) : undefined,
-    }));
-  },
+async function getGuests(): Promise<Person[]> {
+  const data = await getJson<any[]>(`${base}/api/guests`, []);
+  return safeArray<any>(data, []).map((g) => ({
+    id: Number(g?.id),
+    name: safeString(g?.name),
+  }));
+}
+
+async function getNavigators(): Promise<Person[]> {
+  const data = await getJson<any[]>(`${base}/api/navigators`, []);
+  return safeArray<any>(data, []).map((n) => ({
+    id: Number(n?.id),
+    name: safeString(n?.name),
+  }));
+}
+
+async function getTags(): Promise<Tag[]> {
+  const data = await getJson<any[]>(`${base}/api/tags`, []);
+  return safeArray<any>(data, []).map((t) => ({
+    id: Number(t?.id),
+    name: safeString(t?.name),
+    slug: t?.slug ? String(t.slug) : undefined,
+  }));
+}
+
+// 期間指定が無い場合は「直近30日」
+function defaultRange(): { start: string; end: string } {
+  const end = new Date();
+  const start = new Date();
+  start.setDate(end.getDate() - 30);
+  const toIso = (d: Date) => d.toISOString().slice(0, 10);
+  return { start: toIso(start), end: toIso(end) };
+}
+
+async function getAnalytics(start?: string, end?: string): Promise<any> {
+  const r = {
+    start: start || defaultRange().start,
+    end: end || defaultRange().end,
+  };
+  const qs = new URLSearchParams(r as any).toString();
+  return getJson<any>(`${base}/api/analytics?${qs}`, {
+    totalViews: 0,
+    topArticles: [],
+  });
+}
+
+async function trackAnalytics(articleId: number, date?: string): Promise<boolean> {
+  const res = await fetch(`${base}/api/analytics/track`, {
+    method: "POST",
+    headers: { "content-type": "application/json", accept: "application/json" },
+    body: JSON.stringify(date ? { articleId, date } : { articleId }),
+  });
+  return res.ok;
+}
+
+/* ========== まとめて export ========== */
+
+export const api = {
+  getArticles,
+  getFlattenedLibraryItems,
+  getGuests,
+  getNavigators,
+  getTags,
+  getAnalytics,
+  analytics: getAnalytics,    // 互換用
+  trackAnalytics,
 };
