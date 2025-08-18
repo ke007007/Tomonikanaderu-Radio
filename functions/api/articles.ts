@@ -1,44 +1,18 @@
-import { json, readJson, error, parseJsonColumns, run } from './_utils';
-import type { Article } from '../../types';
+export const onRequest: PagesFunction = async (ctx) => { const { request, env } = ctx;
 
-function now() { return new Date().toISOString().slice(0,10).replace(/-/g, '.'); }
+// 記事一覧: JSONカラムを配列に直してから返す
+if (request.method === 'GET') { const { results } = await env.DB .prepare("SELECT * FROM articles ORDER BY COALESCE(published_at, created_at) DESC") .all();
 
-export const onRequest: PagesFunction = async ({ env, request }) => {
-  const url = new URL(request.url);
-  if (request.method === 'GET') {
-    const res = await run<any>(env as any, `SELECT * FROM articles ORDER BY CASE WHEN published_at IS NULL THEN 1 ELSE 0 END, published_at DESC`);
-    const rows = (res.results || []).map(r => parseJsonColumns(r, ['audio_links','guest_ids','navigator_ids','tag_ids','library_items'])) as Article[];
-    return json(rows);
-  }
-  if (request.method === 'POST') {
-    const body = await readJson<Partial<Article>>(request);
-    if (!body.title || !body.slug || !body.body_markdown) return error('title, slug, body_markdown are required', 400);
-    const id = body.id ?? Date.now();
-    const created_at = now();
-    const updated_at = created_at;
-    const published_at = body.published_at ?? null;
-    const status = body.status ?? 'draft';
+const parsed = (results || []).map(parseJsonColumns);
+return new Response(JSON.stringify(parsed), {
+  headers: { 'content-type': 'application/json; charset=utf-8' }
+});
+}
 
-    await run(env as any, `INSERT INTO articles (id, title, slug, published_at, status, thumbnail_url, audio_links, guest_ids, navigator_ids, tag_ids, body_markdown, library_items, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [
-      id,
-      body.title,
-      body.slug,
-      published_at,
-      status,
-      body.thumbnail_url ?? null,
-      JSON.stringify(body.audio_links ?? []),
-      JSON.stringify(body.guestIds ?? []),
-      JSON.stringify(body.navigatorIds ?? []),
-      JSON.stringify(body.tagIds ?? []),
-      body.body_markdown,
-      JSON.stringify(body.libraryItems ?? []),
-      created_at,
-      updated_at,
-    ]);
-    const res = await run<any>(env as any, `SELECT * FROM articles WHERE id = ?`, [id]);
-    const row = res.results?.[0];
-    return json(parseJsonColumns(row, ['audio_links','guest_ids','navigator_ids','tag_ids','library_items']));
-  }
-  return error(`Method ${request.method} not allowed`, 405);
-};
+// それ以外のメソッドは未対応（必要になったら後で足します）
+return new Response('Method Not Allowed', { status: 405 }); };
+
+// 文字列(JSON)として入っているカラムを配列に戻す
+function parseJsonColumns(row: any) { const parse = (v: any, def: any) => { if (v == null) return def; if (typeof v === 'string') { try { return JSON.parse(v); } catch { return def; } } return v; };
+
+return { ...row, audio_links: parse(row.audio_links, []), guest_ids: parse(row.guest_ids, []), navigator_ids: parse(row.navigator_ids, []), tag_ids: parse(row.tag_ids, []), library_items: parse(row.library_items, []) }; }
