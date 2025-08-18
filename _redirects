@@ -1,0 +1,5 @@
+# SPA fallback
+/*    /index.html   200
+
+# API stays as-is
+/api/*  /api/:splat 200
