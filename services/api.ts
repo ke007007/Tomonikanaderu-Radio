@@ -4,8 +4,12 @@ import { api as mockApi } from './mockApi';
 // Simple REST API client wrapper for persistence-ready implementation
 // Backed by a configurable BASE_URL (e.g., Cloudflare/Netlify Functions, Fly.io, Supabase Edge Functions)
 
-const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL || process.env.API_BASE_URL || '';
-const USE_MOCK = !BASE_URL;
+const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? process.env.API_BASE_URL ?? '';
+const MODE = (import.meta as any).env?.MODE || process.env.NODE_ENV || 'development';
+const IS_PROD = MODE === 'production';
+// In production, prefer calling real API at same-origin ('') unless explicitly overridden.
+// In dev, fall back to mock when no BASE_URL provided.
+const USE_MOCK = !IS_PROD && !BASE_URL;
 
 async function http<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE_URL}${path}`, {
