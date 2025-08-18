@@ -18,19 +18,19 @@ export type Article = {
   created_at: string;
   updated_at: string;
   published_at: string | null;
-  // サーバー側で付けている展開済み配列（あれば使う）
+  // サーバーが展開して返す場合に備えて
   guests?: Person[];
   navigators?: Person[];
   tags?: Tag[];
 };
 
 const safeString = (v: unknown): string =>
-  typeof v === 'string' ? v : v == null ? '' : String(v);
+  typeof v === "string" ? v : v == null ? "" : String(v);
 
 const safeArray = <T>(v: unknown, fallback: T[] = []): T[] => {
   if (v == null) return fallback;
   if (Array.isArray(v)) return v as T[];
-  if (typeof v === 'string') {
+  if (typeof v === "string") {
     try {
       const p = JSON.parse(v);
       return Array.isArray(p) ? (p as T[]) : fallback;
@@ -62,22 +62,74 @@ const normalizeArticle = (r: any): Article => {
     navigators: safeArray<Person>(r?.navigators ?? [], []),
     tags: safeArray<Tag>(r?.tags ?? [], []),
   };
-
   return article;
 };
 
-const base = '';
+// 相対パスで同一オリジンの /api/* を叩く
+const base = "";
+
+async function getJson<T>(url: string, fallback: T): Promise<T> {
+  const res = await fetch(url, { headers: { accept: "application/json" } });
+  if (!res.ok) {
+    // 404などは空配列等で復帰
+    return fallback;
+  }
+  try {
+    const data = await res.json();
+    return (data as T) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
 
 export const api = {
+  // 記事一覧（安全な型に正規化）
   async getArticles(): Promise<Article[]> {
-    const res = await fetch(`${base}/api/articles`, {
-      headers: { 'accept': 'application/json' },
-    });
-    if (!res.ok) throw new Error(`GET /api/articles ${res.status}`);
-    const data = await res.json();
-    // サーバーが返した値をフロントでも二重に正規化（undefined対策）
+    const data = await getJson<any[]>(`${base}/api/articles`, []);
     return safeArray<any>(data, []).map(normalizeArticle);
   },
 
-  // 必要になったら以下に POST/PUT/DELETE などを追記
+  // ライブラリー（フラット化されたアイテム一覧）
+  // サーバーの /api/library-items を優先。無ければ記事からフラット化して返す。
+  async getFlattenedLibraryItems(): Promise<any[]> {
+    const items = await getJson<any[]>(`${base}/api/library-items`, []);
+    if (Array.isArray(items) && items.length > 0) return items;
+
+    // フォールバック: 記事からフラット化
+    const articles = await this.getArticles();
+    const flattened: any[] = [];
+    for (const a of articles) {
+      (a.library_items || []).forEach((it, idx) => {
+        flattened.push({
+          id: `${a.id}-${idx}`,
+          type: it?.type ?? "",
+          title: it?.title ?? "",
+          url: it?.url ?? "",
+          articleId: a.id,
+          articleSlug: a.slug,
+          articleTitle: a.title,
+          item_index: idx,
+        });
+      });
+    }
+    return flattened;
+  },
+
+  // タクソノミー（管理画面用）。存在しない/失敗時は空配列で復帰
+  async getGuests(): Promise<Person[]> {
+    const data = await getJson<any[]>(`${base}/api/guests`, []);
+    return safeArray<any>(data, []).map((g) => ({ id: Number(g?.id), name: safeString(g?.name) }));
+  },
+  async getNavigators(): Promise<Person[]> {
+    const data = await getJson<any[]>(`${base}/api/navigators`, []);
+    return safeArray<any>(data, []).map((n) => ({ id: Number(n?.id), name: safeString(n?.name) }));
+  },
+  async getTags(): Promise<Tag[]> {
+    const data = await getJson<any[]>(`${base}/api/tags`, []);
+    return safeArray<any>(data, []).map((t) => ({
+      id: Number(t?.id),
+      name: safeString(t?.name),
+      slug: t?.slug ? String(t.slug) : undefined,
+    }));
+  },
 };
