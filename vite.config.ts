@@ -13,5 +13,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    hmr: {
+      clientPort: 443,
+      protocol: 'wss'
+    },
+    allowedHosts: [
+      '.e2b.dev',
+      'localhost',
+      '127.0.0.1'
+    ]
   },
 })
