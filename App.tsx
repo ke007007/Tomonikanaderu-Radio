@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Link, NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { api } from './services/mockApi';
+import { api } from './services/api';
 import type { Article, LibraryItem, Person, Tag, AudioLink, LibraryLink, FlattenedLibraryItem } from './types';
 import { TOP_ARTICLE_COUNT, ARTICLES_PER_PAGE, LIBRARY_ITEMS_PER_PAGE } from './constants';
 import RadioIcon from './components/icons/RadioIcon';
