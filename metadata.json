@@ -1,0 +1,5 @@
+{
+  "name": "ともに奏でるラジオ",
+  "description": "A portal site for collecting dialogue articles, featuring an admin panel for content management, a library of curated books and music, and full-text search capabilities.",
+  "requestFramePermissions": []
+}

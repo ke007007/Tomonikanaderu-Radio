@@ -1,0 +1,104 @@
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radio Co-creation Portal</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ['"Zen Kaku Gothic New"', 'sans-serif'],
+            },
+            colors: {
+              brand: {
+                1: '#84CCC9',
+                2: '#8B9BCB',
+              },
+              tint: {
+                1: '#F0F5F5',
+                2: '#F1F2F8',
+              },
+              ink: '#333333',
+              line: '#E0E0E0',
+            },
+            boxShadow: {
+              soft: '0 4px 6px -1px rgb(0 0 0 / 0.07), 0 2px 4px -2px rgb(0 0 0 / 0.07)',
+            }
+          }
+        }
+      }
+    </script>
+  <script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react-markdown": "https://esm.sh/react-markdown@^10.1.0",
+    "remark-gfm": "https://esm.sh/remark-gfm@^4.0.1",
+    "react-router-dom": "https://esm.sh/react-router-dom@^7.8.1"
+  }
+}
+</script>
+<style>
+  .prose {
+    color: #333;
+    line-height: 1.75;
+  }
+  .prose h1, .prose h2, .prose h3, .prose h4 {
+    font-weight: 700;
+    color: #111;
+  }
+  .prose h1 { font-size: 2.25rem; margin-top: 2em; margin-bottom: 1em; }
+  .prose h2 { font-size: 1.875rem; margin-top: 1.75em; margin-bottom: 0.8em; }
+  .prose h3 { font-size: 1.5rem; margin-top: 1.5em; margin-bottom: 0.6em; }
+  .prose p { margin-bottom: 1.25em; }
+  .prose a { color: #8B9BCB; text-decoration: underline; }
+  .prose a:hover { color: #84CCC9; }
+  .prose strong { font-weight: 700; }
+  .prose ul, .prose ol { margin-left: 1.5em; margin-bottom: 1.25em; }
+  .prose ul { list-style-type: disc; }
+  .prose ol { list-style-type: decimal; }
+  .prose li { margin-top: 0.5em; }
+  .prose blockquote {
+    border-left: 4px solid #84CCC9;
+    padding-left: 1em;
+    font-style: italic;
+    color: #555;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: 1.25em;
+  }
+  .prose pre {
+    background-color: #2d2d2d;
+    color: #f8f8f2;
+    padding: 1em;
+    border-radius: 0.5rem;
+    overflow-x: auto;
+    margin-bottom: 1.25em;
+  }
+  .prose code {
+    background-color: #f1f2f8;
+    padding: 0.2em 0.4em;
+    border-radius: 0.25rem;
+    font-size: 0.9em;
+  }
+  .prose pre code {
+    background-color: transparent;
+    padding: 0;
+  }
+</style>
+</head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
