@@ -299,7 +299,7 @@ export const api = {
   },
   deleteTaxonomyItem: async(type: 'guest' | 'navigator' | 'tag', id: number) => {
      await delay(300);
-     if (type === 'guest' && articles.some(a => a.guestIds.includes(id))) return { success: false, message: 'この記事で使用されているため削除できません。' };
+     if (type === 'guest' && articles.some(a => a.guestIds?.includes?.(id))) return { success: false, message: 'この記事で使用されているため削除できません。' };
      if (type === 'navigator' && articles.some(a => a.navigatorIds.includes(id))) return { success: false, message: 'この記事で使用されているため削除できません。' };
      if (type === 'tag' && articles.some(a => a.tagIds.includes(id))) return { success: false, message: 'この記事で使用されているため削除できません。' };
 

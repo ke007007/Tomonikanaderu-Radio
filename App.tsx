@@ -162,7 +162,7 @@ const HomePage: React.FC = () => {
 };
 
 const ArticleListItem: React.FC<{ article: Article, guests: Person[], tags: Tag[] }> = ({ article, guests, tags }) => {
-    const articleGuests = guests.filter(g => article.guestIds.includes(g.id));
+    const articleGuests = guests.filter(g => article.guestIds?.includes?.(g.id));
     const articleTags = tags.filter(t => article.tagIds.includes(t.id));
     return (
         <Link to={`/articles/${article.slug}`} className="group block p-4 bg-white rounded-lg shadow-soft hover:shadow-lg transition-shadow flex flex-col sm:flex-row items-center gap-4">
@@ -286,12 +286,12 @@ const ArticleDetailPage: React.FC = () => {
     if (loading) return <div className="container mx-auto px-4 py-8"><LoadingSpinner /></div>;
     if (!article) return <div className="text-center py-20">記事が見つかりません。</div>;
 
-    const articleGuests = guests.filter(g => article.guestIds.includes(g.id));
+    const articleGuests = guests.filter(g => article.guestIds?.includes?.(g.id));
     const articleNavigators = navigators.filter(n => article.navigatorIds.includes(n.id));
     const articleTags = tags.filter(t => article.tagIds.includes(t.id));
     
     const relatedArticles = articles
-        .filter(a => a.id !== article.id && a.status === 'published' && (a.guestIds.some(id => article.guestIds.includes(id)) || a.tagIds.some(id => article.tagIds.includes(id))) )
+        .filter(a => a.id !== article.id && a.status === 'published' && (a.guestIds.some(id => article.guestIds?.includes?.(id)) || a.tagIds.some(id => article.tagIds.includes(id))) )
         .slice(0, 6);
 
     return (
@@ -327,7 +327,7 @@ const ArticleDetailPage: React.FC = () => {
                     {/* Layout for a single recommended item */}
                     {article.libraryItems.length === 1 && (() => {
                         const item = article.libraryItems[0];
-                        const recommendingGuests = guests.filter(g => article.guestIds.includes(g.id));
+                        const recommendingGuests = guests.filter(g => article.guestIds?.includes?.(g.id));
 
                         return (
                             <div className="max-w-2xl mx-auto bg-white rounded-xl shadow-soft overflow-hidden md:flex group">
@@ -495,11 +495,11 @@ const LibraryPage: React.FC = () => {
                 <>
                     {viewMode === 'grid' ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4 md:gap-6">
-                            {paginatedItems.map(item => <LibraryCard key={item.id} item={item} recommendingGuests={guests.filter(g => item.recommendingGuestIds.includes(g.id))} />)}
+                            {paginatedItems.map(item => <LibraryCard key={item.id} item={item} recommendingGuests={guests.filter(g => item.recommendingguestIds?.includes?.(g.id))} />)}
                         </div>
                     ) : (
                          <div className="space-y-4">
-                            {paginatedItems.map(item => <LibraryListItem key={item.id} item={item} recommendingGuests={guests.filter(g => item.recommendingGuestIds.includes(g.id))} />)}
+                            {paginatedItems.map(item => <LibraryListItem key={item.id} item={item} recommendingGuests={guests.filter(g => item.recommendingguestIds?.includes?.(g.id))} />)}
                         </div>
                     )}
                     <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
@@ -715,7 +715,7 @@ const AdminArticlesPage: React.FC = () => {
                         <thead><tr className="border-b bg-gray-50"><th className="p-3">タイトル</th><th className="p-3">ステータス</th><th className="p-3">公開日</th><th className="p-3">ゲスト</th><th className="p-3">操作</th></tr></thead>
                         <tbody>
                             {articles.map(article => {
-                                const articleGuests = guests.filter(g => article.guestIds.includes(g.id)).map(g => g.name).join(', ');
+                                const articleGuests = guests.filter(g => article.guestIds?.includes?.(g.id)).map(g => g.name).join(', ');
                                 return (
                                     <tr key={article.id} className="border-b hover:bg-gray-50 text-sm">
                                         <td className="p-3 font-semibold">{article.title}</td>

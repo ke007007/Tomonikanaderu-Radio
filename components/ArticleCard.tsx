@@ -11,7 +11,7 @@ interface ArticleCardProps {
 }
 
 const ArticleCard: React.FC<ArticleCardProps> = ({ article, guests, tags }) => {
-  const articleGuests = guests.filter(g => article.guestIds.includes(g.id));
+  const articleGuests = guests.filter(g => article.guestIds?.includes?.(g.id));
   const articleTags = tags.filter(t => article.tagIds.includes(t.id));
 
   return (
