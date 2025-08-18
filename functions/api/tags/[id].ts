@@ -11,7 +11,7 @@ export const onRequest: PagesFunction = async ({ env, request, params }) => {
     return json({ success: true });
   }
   if (request.method === 'DELETE') {
-    const used = await run<any>(env as any, `SELECT 1 FROM articles WHERE json_contains(tag_ids, json(?)) LIMIT 1`, [id]);
+    const used = await run<any>(env as any, `SELECT 1 FROM articles, json_each(tag_ids) AS t WHERE t.value = ? LIMIT 1`, [id]);
     if (used.results?.length) return error('Used by an article', 400);
     await run(env as any, `DELETE FROM tags WHERE id=?`, [id]);
     return json({ success: true });

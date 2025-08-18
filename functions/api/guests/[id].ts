@@ -1,4 +1,4 @@
-import { json, readJson, error, run, notFound } from '../_utils';
+import { json, readJson, error, run } from '../_utils';
 
 export const onRequest: PagesFunction = async ({ env, request, params }) => {
   const id = Number(params?.id);
@@ -11,7 +11,7 @@ export const onRequest: PagesFunction = async ({ env, request, params }) => {
   }
   if (request.method === 'DELETE') {
     // prevent delete if used by an article
-    const used = await run<any>(env as any, `SELECT 1 FROM articles WHERE json_contains(guest_ids, json(?)) LIMIT 1`, [id]);
+    const used = await run<any>(env as any, `SELECT 1 FROM articles, json_each(guest_ids) AS g WHERE g.value = ? LIMIT 1`, [id]);
     if (used.results?.length) return error('Used by an article', 400);
     await run(env as any, `DELETE FROM guests WHERE id=?`, [id]);
     return json({ success: true });

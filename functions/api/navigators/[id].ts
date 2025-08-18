@@ -10,7 +10,7 @@ export const onRequest: PagesFunction = async ({ env, request, params }) => {
     return json({ success: true });
   }
   if (request.method === 'DELETE') {
-    const used = await run<any>(env as any, `SELECT 1 FROM articles WHERE json_contains(navigator_ids, json(?)) LIMIT 1`, [id]);
+    const used = await run<any>(env as any, `SELECT 1 FROM articles, json_each(navigator_ids) AS n WHERE n.value = ? LIMIT 1`, [id]);
     if (used.results?.length) return error('Used by an article', 400);
     await run(env as any, `DELETE FROM navigators WHERE id=?`, [id]);
     return json({ success: true });
