@@ -1,59 +1,83 @@
-import type { Article, FlattenedLibraryItem, Person, Tag } from '../types';
-import { api as mockApi } from './mockApi';
+// src/services/api.ts
+type ID = number;
 
-// Simple REST API client wrapper for persistence-ready implementation
-// Backed by a configurable BASE_URL (e.g., Cloudflare/Netlify Functions, Fly.io, Supabase Edge Functions)
+export type Tag = { id: ID; name: string; slug?: string };
+export type Person = { id: ID; name: string };
+export type LibraryItem = { type: string; title?: string; url?: string };
 
-const BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL ?? process.env.API_BASE_URL ?? '';
-const MODE = (import.meta as any).env?.MODE || process.env.NODE_ENV || 'development';
-const IS_PROD = MODE === 'production';
-// In production, prefer calling real API at same-origin ('') unless explicitly overridden.
-// In dev, fall back to mock when no BASE_URL provided.
-const USE_MOCK = !IS_PROD && !BASE_URL;
+export type Article = {
+  id: ID;
+  title: string;
+  slug: string;
+  content: string;
+  audio_links: string[];
+  guest_ids: ID[];
+  navigator_ids: ID[];
+  tag_ids: ID[];
+  library_items: LibraryItem[];
+  created_at: string;
+  updated_at: string;
+  published_at: string | null;
+  // サーバー側で付けている展開済み配列（あれば使う）
+  guests?: Person[];
+  navigators?: Person[];
+  tags?: Tag[];
+};
 
-async function http<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${BASE_URL}${path}`, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...(init?.headers || {}),
-    },
-    ...init,
-  });
-  if (!res.ok) {
-    const text = await res.text().catch(() => '');
-    throw new Error(`HTTP ${res.status} ${res.statusText}: ${text}`);
+const safeString = (v: unknown): string =>
+  typeof v === 'string' ? v : v == null ? '' : String(v);
+
+const safeArray = <T>(v: unknown, fallback: T[] = []): T[] => {
+  if (v == null) return fallback;
+  if (Array.isArray(v)) return v as T[];
+  if (typeof v === 'string') {
+    try {
+      const p = JSON.parse(v);
+      return Array.isArray(p) ? (p as T[]) : fallback;
+    } catch {
+      return fallback;
+    }
   }
-  return res.status === 204 ? (undefined as any) : await res.json();
-}
+  return fallback;
+};
 
-export const api = USE_MOCK ? mockApi : {
-  // Articles
-  getArticles: () => http<Article[]>('/api/articles'),
-  getArticleById: (id: number) => http<Article>(`/api/articles/${id}`),
-  getArticleBySlug: (slug: string) => http<Article>(`/api/articles/slug/${encodeURIComponent(slug)}`),
-  createArticle: (data: Omit<Article, 'id' | 'created_at' | 'updated_at'>) =>
-    http<Article>('/api/articles', { method: 'POST', body: JSON.stringify(data) }),
-  updateArticle: (id: number, data: Partial<Article>) =>
-    http<Article>(`/api/articles/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-  deleteArticle: (id: number) => http<{ success: true }>(`/api/articles/${id}`, { method: 'DELETE' }),
+const normalizeArticle = (r: any): Article => {
+  const library = r?.library_items ?? r?.library_json;
+  const audio = r?.audio_links ?? r?.audio_json;
 
-  // Flattened library items for listing
-  getFlattenedLibraryItems: () => http<FlattenedLibraryItem[]>('/api/library-items'),
+  const article: Article = {
+    id: Number(r?.id),
+    title: safeString(r?.title),
+    slug: safeString(r?.slug),
+    content: safeString(r?.content),
+    audio_links: safeArray<string>(audio, []),
+    guest_ids: safeArray<ID>(r?.guest_ids, []),
+    navigator_ids: safeArray<ID>(r?.navigator_ids, []),
+    tag_ids: safeArray<ID>(r?.tag_ids, []),
+    library_items: safeArray<LibraryItem>(library, []),
+    created_at: safeString(r?.created_at),
+    updated_at: safeString(r?.updated_at),
+    published_at: r?.published_at ?? null,
+    guests: safeArray<Person>(r?.guests ?? [], []),
+    navigators: safeArray<Person>(r?.navigators ?? [], []),
+    tags: safeArray<Tag>(r?.tags ?? [], []),
+  };
 
-  // Taxonomies
-  getGuests: () => http<Person[]>('/api/guests'),
-  getNavigators: () => http<Person[]>('/api/navigators'),
-  getTags: () => http<Tag[]>('/api/tags'),
-  addTaxonomyItem: (type: 'guest' | 'navigator' | 'tag', name: string) =>
-    http(`/api/${type}s`, { method: 'POST', body: JSON.stringify({ name }) }),
-  updateTaxonomyItem: (type: 'guest' | 'navigator' | 'tag', id: number, name: string) =>
-    http(`/api/${type}s/${id}`, { method: 'PUT', body: JSON.stringify({ name }) }),
-  deleteTaxonomyItem: (type: 'guest' | 'navigator' | 'tag', id: number) =>
-    http(`/api/${type}s/${id}`, { method: 'DELETE' }),
+  return article;
+};
 
-  // Analytics
-  getAnalytics: (startDate: string, endDate: string) =>
-    http<{ totalViews: number; topArticles: { articleId: number; articleTitle: string; views: number }[] }>(
-      `/api/analytics?start=${encodeURIComponent(startDate)}&end=${encodeURIComponent(endDate)}`
-    ),
+const base = '';
+
+export const api = {
+  async getArticles(): Promise<Article[]> {
+    const res = await fetch(`${base}/api/articles`, {
+      headers: { 'accept': 'application/json' },
+    });
+    if (!res.ok) throw new Error(`GET /api/articles ${res.status}`);
+    const data = await res.json();
+    // サーバーが返した値をフロントでも二重に正規化（undefined対策）
+    return safeArray<any>(data, []).map(normalizeArticle);
+  },
+
+  // 必要になったら以下に POST/PUT/DELETE などを追記
 };
