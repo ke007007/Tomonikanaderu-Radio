@@ -1,21 +1,7 @@
-// Cloudflare Pages Functions catch-all to serve the SPA and API
-export const onRequest: PagesFunction = async (context) => {
-  const { request, env, next } = context as any;
-  const url = new URL(request.url);
+export const onRequest: PagesFunction = async (ctx) => { const { request, env, next } = ctx; const url = new URL(request.url);
 
-  // Delegate to functions under /api/*
-  if (url.pathname.startsWith('/api/')) {
-    return next();
-  }
+// 1) /api/* は Functions の各APIへ if (url.pathname.startsWith('/api/')) { return next(); }
 
-  // For non-API routes, serve the built SPA (dist/index.html)
-  // When deploying on Cloudflare Pages, this file is served automatically if present.
-  // This catch-all is a safety net; if not found, just continue to default.
-  try {
-    // @ts-ignore CF Pages provides ASSETS binding in functions runtime
-    const res = await env.ASSETS.fetch(new Request(url.origin + '/index.html'));
-    if (res && res.ok) return res;
-  } catch {}
+// 2) まず静的アセット（ビルド成果物）をそのまま返す try { const assetResp = await env.ASSETS.fetch(request); if (assetResp && assetResp.status !== 404) { return assetResp; } } catch {}
 
-  return next();
-};
+// 3) 見つからなければ SPA 用に index.html を返す const indexReq = new Request(new URL('/index.html', url).toString(), request); return env.ASSETS.fetch(indexReq); };
