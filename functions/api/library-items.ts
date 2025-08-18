@@ -1,23 +1,49 @@
-import { json, run, parseJsonColumns } from './_utils';
-import type { FlattenedLibraryItem } from '../../types';
+// functions/api/library-items.ts
+export const onRequest: PagesFunction = async (ctx) => {
+  const { request, env } = ctx;
 
-export const onRequest: PagesFunction = async ({ env }) => {
-  const res = await run<any>(env as any, `SELECT * FROM articles`);
-  const rows = (res.results || []).map(r => parseJsonColumns(r, ['audio_links','guest_ids','navigator_ids','tag_ids','library_items']));
-  const items: FlattenedLibraryItem[] = [];
-  for (const a of rows) {
-    if (Array.isArray(a.library_items)) {
-      for (const item of a.library_items) {
-        items.push({
-          ...item,
-          episodeId: a.id,
-          episodeTitle: a.title,
-          episodeSlug: a.slug,
-          recommendingGuestIds: a.guest_ids || [],
-        });
-      }
-    }
+  if (request.method !== 'GET') {
+    return new Response('Method Not Allowed', { status: 405 });
   }
-  items.sort((x, y) => new Date(y.created_at.replace(/\./g, '-')).getTime() - new Date(x.created_at.replace(/\./g, '-')).getTime());
-  return json(items);
+
+  const { results } = await env.DB
+    .prepare("SELECT id, slug, title, library_items FROM articles")
+    .all();
+
+  const rows = (results ?? []).map((r: any) => ({
+    id: Number(r?.id),
+    slug: String(r?.slug ?? ''),
+    title: String(r?.title ?? ''),
+    library_items: parseArray(r?.library_items),
+  }));
+
+  const flattened: any[] = [];
+  for (const a of rows) {
+    (a.library_items ?? []).forEach((it: any, idx: number) => {
+      flattened.push({
+        id: `${a.id}-${idx}`,
+        type: String(it?.type ?? ''),
+        title: String(it?.title ?? ''),
+        url: String(it?.url ?? ''),
+        articleId: a.id,
+        articleSlug: a.slug,
+        articleTitle: a.title,
+        item_index: idx,
+      });
+    });
+  }
+
+  return new Response(JSON.stringify(flattened), {
+    headers: { 'content-type': 'application/json; charset=utf-8' }
+  });
 };
+
+function parseArray(v: unknown): any[] {
+  if (v == null) return [];
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; }
+    catch { return []; }
+  }
+  return [];
+}
