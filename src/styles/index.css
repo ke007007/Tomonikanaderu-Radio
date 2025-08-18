@@ -16,15 +16,14 @@
     --primary: 0 72.2% 50.6%;
     --secondary: 201 85% 46%;
   }
-}
-
-@layer base {
-  * {
-    @apply border-border;
-  }
+  
   body {
-    @apply bg-background text-foreground;
+    @apply bg-white text-gray-900;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  .dark body {
+    @apply bg-gray-900 text-gray-100;
   }
 }
 
