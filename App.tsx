@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, Link, NavLink, Outlet, useParams, useNavigate } from 'react-router-dom';
-import { api } from './services/api';
+import { supabaseApi } from './services/supabaseApi';
 import type { Article, LibraryItem, Person, Tag, AudioLink, LibraryLink, FlattenedLibraryItem } from './types';
 import { TOP_ARTICLE_COUNT, ARTICLES_PER_PAGE, LIBRARY_ITEMS_PER_PAGE } from './constants';
 import RadioIcon from './components/icons/RadioIcon';
@@ -26,11 +25,11 @@ const useData = () => {
     const fetchData = async () => {
         setLoading(true);
         const [articlesRes, libItemsRes, guestsRes, navigatorsRes, tagsRes] = await Promise.all([
-            api.getArticles(),
-            api.getFlattenedLibraryItems(),
-            api.getGuests(),
-            api.getNavigators(),
-            api.getTags(),
+            supabaseApi.articles.getAll(),
+            supabaseApi.getFlattenedLibraryItems(),
+            supabaseApi.guests.getAll(),
+            supabaseApi.navigators.getAll(),
+            supabaseApi.tags.getAll(),
         ]);
         setArticles(articlesRes);
         setFlattenedLibraryItems(libItemsRes);
@@ -282,6 +281,12 @@ const ArticleDetailPage: React.FC = () => {
     }, [slug]);
 
     const article = useMemo(() => articles.find(a => a.slug === slug), [slug, articles]);
+
+    useEffect(() => {
+        if (article) {
+            supabaseApi.analytics.trackPageView(article.id);
+        }
+    }, [article]);
 
     if (loading) return <div className="container mx-auto px-4 py-8"><LoadingSpinner /></div>;
     if (!article) return <div className="text-center py-20">記事が見つかりません。</div>;
@@ -632,7 +637,7 @@ const AdminDashboard: React.FC = () => {
                 endDate = customEndDate;
                 break;
         }
-        const data = await api.getAnalytics(startDate, endDate);
+        const data = await supabaseApi.analytics.getAnalytics(startDate, endDate);
         setAnalyticsData(data);
         setLoading(false);
     };
@@ -698,7 +703,7 @@ const AdminArticlesPage: React.FC = () => {
 
     const handleDelete = async (id: number) => {
         if (window.confirm("この記事を削除しますか？関連するおすすめアイテムもすべて削除されます。")) {
-            await api.deleteArticle(id);
+            await supabaseApi.articles.delete(id);
             refreshData();
         }
     };
@@ -937,7 +942,7 @@ const AdminArticleForm: React.FC = () => {
     useEffect(() => {
         if (id) {
             setLoading(true);
-            api.getArticleById(Number(id)).then(data => {
+            supabaseApi.articles.getById(Number(id)).then(data => {
                 if (data) setArticle(data);
                 setLoading(false);
             });
@@ -1002,9 +1007,9 @@ const AdminArticleForm: React.FC = () => {
         }
         setLoading(true);
         if (id) {
-            await api.updateArticle(Number(id), article);
+            await supabaseApi.articles.update(Number(id), article);
         } else {
-            await api.createArticle(article as any);
+            await supabaseApi.articles.create(article as any);
         }
         await refreshData();
         setLoading(false);
@@ -1110,7 +1115,7 @@ const AdminTaxonomyPage: React.FC = () => {
 
     const fetchItems = async () => {
         setLoading(true);
-        const data = await api.getTaxonomy(currentTab);
+        const data = await supabaseApi.getTaxonomy(currentTab);
         setItems(data);
         setLoading(false);
     };
@@ -1122,7 +1127,7 @@ const AdminTaxonomyPage: React.FC = () => {
     const handleAddItem = async (e: React.FormEvent) => {
         e.preventDefault();
         if (newItemName.trim()) {
-            await api.addTaxonomyItem(currentTab, newItemName.trim());
+            await supabaseApi.addTaxonomyItem(currentTab, newItemName.trim());
             setNewItemName('');
             fetchItems();
         }
@@ -1130,7 +1135,7 @@ const AdminTaxonomyPage: React.FC = () => {
 
     const handleUpdateItem = async () => {
         if (editingItem) {
-            await api.updateTaxonomyItem(currentTab, editingItem.id, editingItem.name);
+            await supabaseApi.updateTaxonomyItem(currentTab, editingItem.id, editingItem.name);
             setEditingItem(null);
             fetchItems();
         }
@@ -1138,7 +1143,7 @@ const AdminTaxonomyPage: React.FC = () => {
     
     const handleDelete = async (id: number) => {
         if (window.confirm('この項目を削除しますか？')) {
-            const result = await api.deleteTaxonomyItem(currentTab, id);
+            const result = await supabaseApi.deleteTaxonomyItem(currentTab, id);
             if (!result.success) alert(`削除に失敗しました: ${result.message}`);
             fetchItems();
         }
