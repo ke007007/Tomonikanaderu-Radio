@@ -1,12 +1,12 @@
 
 export interface Tag {
-  id: number;
+  id: string;
   name: string;
   slug: string;
 }
 
 export interface Person {
-  id: number;
+  id: string;
   name: string;
   role: 'guest' | 'navigator';
 }
@@ -22,7 +22,7 @@ export interface LibraryLink {
 }
 
 export interface LibraryItem {
-  id: number;
+  id?: string;
   type: 'book' | 'track';
   title: string;
   creator: string;
@@ -32,26 +32,32 @@ export interface LibraryItem {
 }
 
 export interface Article {
-  id: number;
+  id: string;
   title: string;
   slug: string;
+  content: string;
   published_at: string | null;
   status: 'draft' | 'published';
   thumbnail_url: string | null;
-  audio_links: AudioLink[];
-  guestIds: number[];
-  navigatorIds: number[];
-  tagIds: number[];
+  audio_links: string[];
+  guestIds: string[];
+  navigatorIds: string[];
+  tagIds: string[];
   body_markdown: string;
   libraryItems: LibraryItem[]; // おすすめアイテムを記事に直接内包
+  library_items: LibraryItem[];
   created_at: string;
   updated_at: string;
 }
 
 // ライブラリーページ表示用に、記事情報を付与したアイテムの型
 export interface FlattenedLibraryItem extends LibraryItem {
-  episodeId: number;
+  episodeId: string;
   episodeTitle: string;
   episodeSlug: string;
-  recommendingGuestIds: number[];
+  recommendingGuestIds: string[];
+  articleId: string;
+  articleSlug: string;
+  articleTitle: string;
+  item_index: number;
 }
