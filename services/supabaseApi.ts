@@ -71,6 +71,20 @@ export const articlesApi = {
     return data ? convertArticleFromDB(data) : null;
   },
 
+  async getById(id: string): Promise<Article | null> {
+    const { data, error } = await supabase
+      .from('articles')
+      .select('*')
+      .eq('id', id)
+      .single();
+    
+    if (error) {
+      console.error('記事の取得に失敗しました:', error);
+      return null;
+    }
+    
+    return data ? convertArticleFromDB(data) : null;
+  },
   async create(article: Omit<Article, 'id' | 'created_at' | 'updated_at'>): Promise<Article | null> {
     const { data, error } = await supabase
       .from('articles')
