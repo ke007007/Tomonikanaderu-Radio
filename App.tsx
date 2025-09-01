@@ -942,7 +942,7 @@ const AdminArticleForm: React.FC = () => {
     useEffect(() => {
         if (id) {
             setLoading(true);
-            supabaseApi.articles.getById(Number(id)).then(data => {
+            supabaseApi.articles.getById(id).then(data => {
                 if (data) setArticle(data);
                 setLoading(false);
             });
